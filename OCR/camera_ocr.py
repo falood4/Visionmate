@@ -5,7 +5,6 @@ Captures frames from specified camera and runs OCR analysis.
 """
 
 import cv2
-import numpy as np
 from datetime import datetime
 from pathlib import Path
 import time
@@ -13,7 +12,7 @@ import time
 # Import OCR function from ocr2.py
 import sys
 sys.path.insert(0, str(Path(__file__).parent))
-from ocr2 import get_better_ocr_system, _preprocess_for_ocr, _ocr_with_best_psm, _detect_misread_words, _autocorrect_text
+from ocr2 import get_better_ocr_system
 
 try:
     from picamera2 import Picamera2
@@ -106,15 +105,16 @@ class CameraOCR:
         temp_path = self.output_dir / "temp_ocr_input.jpg"
         cv2.imwrite(str(temp_path), frame)
         
-        # Run OCR
-        extracted_text = get_better_ocr_system(
-            str(temp_path),
-            autocorrect=autocorrect,
-            confidence_threshold=confidence_threshold
-        )
-        
-        # Clean up temp file
-        temp_path.unlink()
+        try:
+            # Run OCR
+            extracted_text = get_better_ocr_system(
+                str(temp_path),
+                autocorrect=autocorrect,
+                confidence_threshold=confidence_threshold
+            )
+        finally:
+            # Clean up temp file even if OCR fails.
+            temp_path.unlink(missing_ok=True)
         
         print("\n" + "=" * 60)
         print("OCR RESULT")
@@ -185,14 +185,14 @@ def main():
                     break
                 
                 # Capture and run OCR
-                result = cam_ocr.capture_and_ocr(
-                    autocorrect=not args.no_autocorrect,
-                    confidence_threshold=args.confidence,
-                    save_frame=True
-                )
+                cam_ocr.capture_and_ocr(
+                        autocorrect=not args.no_autocorrect,
+                        confidence_threshold=args.confidence,
+                        save_frame=True
+                    )
         else:
             # Single capture mode
-            result = cam_ocr.capture_and_ocr(
+            cam_ocr.capture_and_ocr(
                 autocorrect=not args.no_autocorrect,
                 confidence_threshold=args.confidence,
                 save_frame=True
